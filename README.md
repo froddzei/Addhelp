@@ -7,7 +7,7 @@ Grundidén: det är tavlan som säger vad som ska göras, inte partnern. Då sli
 ## Så funkar den
 
 - **Idag**: dina sysslor, de fria sysslorna som vem som helst kan ta, och vad den andra har idag.
-- **Snabbinmatning**: ser du något (en pantburk på uppfarten) skriver du in det på tre sekunder. Då hamnar det bland de fria sysslorna i stället för i ditt huvud.
+- **Säg allt du tänker på**: prata eller skriv huller om buller i rutan högst upp. Chefen gör om det till sysslor som alltid går att göra klart i ett svep: stora saker ("göra klart förrådet") blir projekt med steg, och saker som pågår hela tiden ("städa") blir konkreta återkommande sysslor. Ett projekt visar bara nästa steg på tavlan.
 - **Fria att ta**: sysslor utan ägare. Den som tar en sådan får det räknat som initiativ.
 - **Återkommande**: sysslor som "varje vecka" dyker upp igen av sig själva när de bockas av.
 - **Chefen**: en AI som vet vad ett hus med barn kräver. Ni trycker i vad ni har (krypgrund, värmepump, altan, barnens åldrar …) och chefen lägger in en underhållsplan för året, delar upp projekt i små steg (gärna från ett foto) och håller veckomöte där de fria sysslorna fördelas rättvist. Snabbinmatningen sorteras också automatiskt.

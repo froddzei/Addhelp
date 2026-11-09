@@ -57,9 +57,9 @@ h1{font-family:var(--f-display);font-weight:800;font-size:2rem;letter-spacing:-.
 .who button[aria-pressed="true"].a{background:var(--pa);color:#fff}
 .who button[aria-pressed="true"].b{background:var(--pb);color:#fff}
 
-form.quick{display:flex;gap:8px}
-form.quick input{flex:1;min-width:0;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;font-size:1.05rem}
-form.quick input:focus{border-color:var(--accent);outline:none}
+form.quick{display:flex;gap:8px;align-items:flex-end}
+form.quick textarea{flex:1;min-width:0;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;font-size:1.05rem;resize:none;line-height:1.35;max-height:200px}
+form.quick textarea:focus{border-color:var(--accent);outline:none}
 .btn{border:0;border-radius:14px;padding:12px 16px;font-weight:700;background:var(--surface-2)}
 .btn.primary{background:var(--accent);color:var(--accent-ink)}
 .btn.ghost{background:transparent;border:1px solid var(--line)}
@@ -190,7 +190,7 @@ textarea:focus{border-color:var(--accent);outline:none}
       </div>
     </div>
     <form class="quick" id="quick" autocomplete="off">
-      <input id="quick-input" placeholder="Såg du något? T.ex. ”pantburk på uppfarten”" aria-label="Lägg till en sak snabbt" maxlength="120">
+      <textarea id="quick-input" rows="1" placeholder="Säg eller skriv allt du tänker på. T.ex. ”göra klart förrådet, panta burken, städa”" aria-label="Säg eller skriv det som behöver göras" maxlength="4000"></textarea>
       <button class="btn primary" type="submit">Lägg till</button>
     </form>
     <nav class="tabs" role="tablist">
@@ -384,7 +384,11 @@ function taskRow(t, opts={}){
   if(free) chips.push(`<span class="chip free">Fri att ta</span>`);
   else if(resp) chips.push(`<span class="chip ${resp}">${esc(name(resp))}${t.owner==="any"?" tog den":""}</span>`);
   chips.push(`<span class="chip ${late?"late":""}">${esc(dueLabel(t))}</span>`);
-  if(opts.zone!==false) chips.push(`<span class="chip">${esc(t.zone||"Övrigt")}</span>`);
+  if(t.pending) chips.unshift(`<span class="chip free">Chefen delar upp …</span>`);
+  if(t.project){
+    const total = tasks.filter(x=>x.project===t.project).length;
+    chips.push(`<span class="chip">${esc(t.project)} · steg ${t.step||1} av ${total}</span>`);
+  } else if(opts.zone!==false) chips.push(`<span class="chip">${esc(t.zone||"Övrigt")}</span>`);
   if(t.every>0) chips.push(`<span class="chip">${esc(repeatLabel(t.every).toLowerCase())}</span>`);
   const side = [];
   if(!readOnly){
@@ -398,9 +402,15 @@ function taskRow(t, opts={}){
   </div>`;
 }
 const sortDue = (a,b) => (a.dueAt-b.dueAt) || ((a.min||5)-(b.min||5));
+/* A project shows only its next unfinished step, so it never feels like a wall. */
+function visibleActive(){
+  const act = tasks.filter(isActive); const next = {};
+  act.forEach(t=>{ if(t.project){ const n=next[t.project]; if(!n || (t.step||0)<(n.step||0)) next[t.project]=t; } });
+  return act.filter(t=>!t.project || next[t.project]===t);
+}
 
 function renderToday(){
-  const act = tasks.filter(isActive);
+  const act = visibleActive();
   const due = act.filter(t=>t.dueAt<=endToday());
   const other = me==="a"?"b":"a";
   const mine = due.filter(t=>responsible(t)===me).sort(sortDue);
@@ -442,7 +452,7 @@ function renderAll(){
   let h = `<section class="block"><h2>Alla sysslor <span class="count">${act.length} st</span></h2><p class="hint">Tryck på en syssla för att ändra vem som äger den, hur ofta den återkommer eller hur lång tid den tar.</p>`;
   const zones = [...ZONES, ...new Set(act.map(t=>t.zone).filter(z=>!ZONES.includes(z)))];
   zones.forEach(z=>{
-    const list = act.filter(t=>(t.zone||"Övrigt")===z).sort(sortDue);
+    const list = act.filter(t=>(t.zone||"Övrigt")===z).sort((a,b)=>(a.project && a.project===b.project) ? (a.step||0)-(b.step||0) : sortDue(a,b));
     if(list.length) h += `<div class="zone"><h3>${esc(z)}</h3><div class="list compact">${list.map(t=>taskRow(t,{zone:false,snooze:false})).join("")}</div></div>`;
   });
   return h + `</section>` + addBtn();
@@ -515,6 +525,12 @@ const CHEF_ROLE = `Du är ”Chefen”: en erfaren, varm och rak husförvaltare 
 const dateContext = () => `Idag är det ${new Date().toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"long",year:"numeric"})} i Sverige.`;
 const houseContext = () => `Hushållet: ${name("a")} och ${name("b")}. Hus och familj: ${(profile.have||[]).join(", ")||"(inte ifyllt)"}.${profile.note?" Mer info från familjen: "+profile.note:""}`;
 const RULES = `zone är exakt en av: ${ZONES.join(" | ")}. min är en av 2, 5, 15, 30, 60, 120.`;
+const ATOMIC = `REGLER FÖR EN BRA SYSSLA:
+- Den ska gå att göra klart i ett svep, på högst 2 timmar, och det ska vara tydligt när den är klar.
+- Titeln börjar med ett verb och är konkret: ”Köp brädor till förrådets fasad”, inte ”Förrådet”.
+- Stora saker (”göra klart förrådet”) blir ett projekt: dela upp i steg i rätt ordning, med egna steg för att bestämma, mäta, köpa (skriv vad som ska köpas), göra och städa efter. Ett arbetsmoment som tar mer än 2 timmar delas i flera pass.
+- Saker som pågår hela tiden (”städa”, ”hålla ordning i garaget”) blir flera konkreta återkommande sysslor med rimlig frekvens, t.ex. ”Dammsug nedervåningen” varje vecka och ”Torka av köksbänkarna” varje dag.
+- Saker som redan är konkreta blir en enda syssla.`;
 
 function normItem(x){
   if(!x || typeof x!=="object") return null;
@@ -553,6 +569,8 @@ ${houseContext()}
 
 Sysslor som redan finns på tavlan (lägg inte till dubbletter eller nästan-dubbletter): ${existing||"inga"}
 
+${ATOMIC}
+
 UPPGIFT: Gör husets plan för de kommande 12 månaderna. Ta med 25–40 sysslor: återkommande underhåll anpassat till just den här utrustningen (filter, luftning, rengöring, kontroller), säsongsarbete i rätt tid på året i svenskt klimat, säkerhet (brandvarnare, brandsläckare), bil (däckbyte, besiktning) och barnfamiljens återkommande saker. Hoppa över sådant som inte passar huset. Sprid ut startdatum: högst 4 saker startar inom 3 dagar, och säsongssaker startar när de ska göras.
 
 Svara ENDAST med en JSON-array, utan annan text. Exempel:
@@ -575,6 +593,8 @@ ${houseContext()}
 
 PROJEKT: ${text||"(se bilden)"}
 ${chef.projFile?"Ett foto av projektet är bifogat. Utgå från det du ser: vad är gjort och vad återstår?\n":""}
+${ATOMIC}
+
 UPPGIFT: Dela upp projektet i 4–15 steg i rätt ordning, så att det faktiskt blir klart. Ta med: mäta och bestämma, inköp (skriv i titeln vad som ska köpas), hyra eller låna verktyg om det behövs, själva arbetet i pass på högst 2 timmar, och städning efteråt. Sprid ut stegen realistiskt för en barnfamilj: korta steg på vardagar, långa steg på helger. Tänk på årstiden, till exempel väder för arbete utomhus.
 
 Svara ENDAST med JSON, utan annan text:
@@ -583,7 +603,7 @@ Regler: name har 1–3 ord. min är en av 2, 5, 15, 30, 60, 120. startInDays är
     chef.projFile && sampleImages ? {images: chef.projFile} : {});
   if(r===null) return;
   const nm = String((r && r.name) || text || "Projekt").trim().slice(0,30);
-  const items = (Array.isArray(r && r.steps) ? r.steps : []).map(s=>normItem({...s, every:0})).filter(Boolean).slice(0,20).map(s=>({...s, zone:"Projekt: "+nm}));
+  const items = (Array.isArray(r && r.steps) ? r.steps : []).map(s=>normItem({...s, every:0})).filter(Boolean).slice(0,20).map((s,i)=>({...s, zone:"Projekt: "+nm, project:nm, step:i+1}));
   if(!items.length){ chef.err="Svaret blev rörigt. Tryck igen så gör chefen ett nytt försök."; chef.errFor="proj"; }
   else chef.proj = {name:nm, summary:String(r.summary||"").slice(0,400), items};
   render();
@@ -591,7 +611,7 @@ Regler: name har 1–3 ord. min är en av 2, 5, 15, 30, 60, 120. startInDays är
 
 async function runWeek(){
   const now = Date.now(), horizon = addDays(now,7);
-  const wk = tasks.filter(t=>isActive(t) && t.dueAt < horizon).sort(sortDue).slice(0,80);
+  const wk = visibleActive().filter(t=>t.dueAt < horizon).sort(sortDue).slice(0,80);
   if(!wk.length){ chef.err="Det finns inget på tavlan den närmaste veckan. Låt chefen göra en plan först."; chef.errFor="week"; render(); return; }
   const lines = wk.map(t=>`${t.id} | ${t.title} | ${t.min||5} min | ${t.owner==="any"?(t.claimedBy?"tagen av "+t.claimedBy:"FRI"):"ägs av "+t.owner} | ${dueLabel(t)}`).join("\n");
   const tally = {a:{min:0,n:0,init:0},b:{min:0,n:0,init:0}};
@@ -620,17 +640,45 @@ Svara ENDAST med JSON, utan annan text:
   render();
 }
 
-async function classify(t){
+async function breakdown(raw, text){
   if(!sampleFn || chef.off) return;
+  const existing = tasks.filter(t=>isActive(t) && t.id!==raw.id).map(t=>t.title).join("; ").slice(0,6000);
+  const speaker = me ? `Den som pratar är ${name(me)}, så ”jag” betyder ${me}.` : "Det är okänt vem av dem som pratar.";
+  let r;
   try {
-    const r = await sampleFn.json(`Du sorterar en hushållssyssla som någon snabbt skrivit in: "${t.title}"
+    r = await sampleFn.json(`${CHEF_ROLE}
+
 ${dateContext()}
-Svara ENDAST med JSON: {"title":"tydlig titel som börjar med ett verb, högst 8 ord, samma betydelse","zone":"Sopor & pant","min":5,"every":0}
-${RULES} every är 0 om det inte uttryckligen är något som återkommer.`, {modelTier:"quick"});
-    const cur = tasks.find(x=>x.id===t.id);
-    if(!cur || !r || typeof r!=="object") return;
-    await store.saveTask({...cur, title:String(r.title||cur.title).trim().slice(0,120)||cur.title, zone:cleanZone(r.zone), min:snapMin(Number(r.min)||cur.min||5), every:Math.max(0,Math.min(730,Math.round(Number(r.every)||0)))});
-  } catch(e){ chefErr(e); }
+${houseContext()}
+Personerna kallas a (${name("a")}) och b (${name("b")}). ${speaker}
+Sysslor som redan finns på tavlan: ${existing||"inga"}
+
+${ATOMIC}
+
+TEXT (pratad eller snabbt skriven, kan innehålla många saker huller om buller):
+"""${text}"""
+
+UPPGIFT: Gör om allt i texten till sysslor enligt reglerna. Hoppa över sådant som redan finns på tavlan. Om texten säger vem som ska göra något, sätt owner till "a" eller "b", annars "any". Om en dag eller tid nämns, räkna ut startInDays. Annars blir startInDays 0 för små saker, och projektsteg sprids ut realistiskt för en barnfamilj.
+
+Svara ENDAST med JSON, utan annan text:
+{"tasks":[{"title":"Köp brädor till förrådets fasad","zone":"Handla","min":60,"every":0,"startInDays":2,"owner":"any","project":"Förrådet","step":2}]}
+Regler: ${RULES} every är antal dagar mellan gångerna (0 = bara en gång). project är ett kort projektnamn (1–3 ord) om sysslan är ett steg i ett större projekt, annars null. step är stegets nummer i projektet (1, 2, 3 …), annars null.`);
+  } catch(e){
+    const msg = chefErr(e);
+    try { await store.saveTask({...raw, pending:false}); } catch {}
+    if(msg) toast("Chefen kunde inte dela upp det just nu. Det ligger kvar som det är.");
+    return;
+  }
+  const items = (Array.isArray(r && r.tasks) ? r.tasks : []).map(x=>{
+    const it = normItem(x); if(!it) return null;
+    const project = x.project ? String(x.project).trim().slice(0,30) : null;
+    return {...it, owner:(x.owner==="a"||x.owner==="b")?x.owner:"any", project, step: project ? Math.max(1,Math.round(Number(x.step)||1)) : null, zone: project ? "Projekt: "+project : it.zone};
+  }).filter(Boolean).slice(0,40);
+  const created = await addItems(items);
+  try { await store.deleteTask(raw.id); } catch {}
+  const restore = async ()=>{ for(const t of created) await store.deleteTask(t.id); await store.saveTask({...raw, pending:false}); };
+  if(!created.length) toast("Det verkar redan finnas på tavlan", restore);
+  else toast(`Chefen gjorde ${created.length} ${created.length===1?"syssla":"sysslor"} av det`, restore);
 }
 
 function pickList(kind, items){
@@ -678,9 +726,9 @@ function renderChef(){
 
 async function addItems(items){
   const now = Date.now();
-  const list = items.filter(it=>it.on).map(it=>({id:uid(), title:it.title, zone:it.zone, owner:"any", min:it.min, every:it.every, dueAt:addDays(now,it.startInDays), createdAt:now, createdBy:me||null, claimedBy:null, by:"chef"}));
+  const list = items.filter(it=>it.on).map(it=>({id:uid(), title:it.title, zone:it.zone, owner:it.owner||"any", min:it.min, every:it.every, dueAt:addDays(now,it.startInDays), createdAt:now, createdBy:me||null, claimedBy:null, by:"chef", project:it.project||null, step:it.step||null}));
   for(const t of list) await store.saveTask(t);
-  return list.length;
+  return list;
 }
 async function onChef(b){
   const a = b.dataset.chef;
@@ -696,7 +744,7 @@ async function onChef(b){
   if(a==="plan") return runPlan();
   if(a==="plan-cancel"){ chef.plan=null; return render(); }
   if(a==="plan-add"){
-    const n = await addItems(chef.plan.items); chef.plan=null;
+    const n = (await addItems(chef.plan.items)).length; chef.plan=null;
     profile = {...profile, planMadeAt:Date.now()};
     try { await store.saveProfile(profile); } catch {}
     toast(`Chefen la in ${n} sysslor`); render(); return;
@@ -705,7 +753,7 @@ async function onChef(b){
   if(a==="photo-clear"){ chef.projFile=null; return render(); }
   if(a==="proj-cancel"){ chef.proj=null; chef.projFromTask=null; return render(); }
   if(a==="proj-add"){
-    const n = await addItems(chef.proj.items); const nm = chef.proj.name;
+    const n = (await addItems(chef.proj.items)).length; const nm = chef.proj.name;
     if(chef.projFromTask){ try { await store.deleteTask(chef.projFromTask); } catch {} }
     chef.proj=null; chef.projText=""; chef.projFile=null; chef.projFromTask=null;
     toast(`${n} steg inlagda under ”Projekt: ${nm}”`); render(); return;
@@ -814,11 +862,17 @@ function askWho(){ toast("Välj vem du är uppe till höger först"); $("#who").
 document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{ tab=b.dataset.tab; ls.set("hemmet.tab",tab); render(); window.scrollTo(0,0); }));
 $("#quick").addEventListener("submit", async e=>{
   e.preventDefault();
-  const v=$("#quick-input").value.trim(); if(!v||readOnly) return;
-  $("#quick-input").value="";
-  const t={id:uid(), title:v, zone:"Övrigt", owner:"any", min:5, every:0, dueAt:startOfDay(), createdAt:Date.now(), createdBy:me||null, claimedBy:null};
-  try { await store.saveTask(t); toast(`”${v}” ligger nu bland de fria`); classify(t); } catch { toast("Det gick inte att spara. Försök igen."); }
+  const q=$("#quick-input"); const v=q.value.trim(); if(!v||readOnly) return;
+  q.value=""; growQuick(); q.blur();
+  const ai = !!(sampleFn && !chef.off);
+  const t={id:uid(), title:v.length>90?v.slice(0,87)+"…":v, raw:v, zone:"Övrigt", owner:"any", min:5, every:0, dueAt:startOfDay(), createdAt:Date.now(), createdBy:me||null, claimedBy:null, pending:ai};
+  try { await store.saveTask(t); } catch { toast("Det gick inte att spara. Försök igen."); return; }
+  if(ai){ toast("Chefen delar upp det i sysslor …"); breakdown(t, v); }
+  else toast("Det ligger nu bland de fria");
 });
+function growQuick(){ const q=$("#quick-input"); q.style.height="auto"; q.style.height=Math.min(q.scrollHeight+4,200)+"px"; }
+$("#quick-input").addEventListener("input", growQuick);
+$("#quick-input").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey && !e.isComposing){ e.preventDefault(); $("#quick").requestSubmit(); } });
 $("#main").addEventListener("click", e=>{ const b=e.target.closest("[data-chef]"); if(b && !b.disabled) onChef(b); });
 $("#main").addEventListener("input", e=>{
   if(e.target.id==="c-note") chef.noteDraft = e.target.value;
