@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+<body>
+<title>Hemmet</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Layout: a fridge board. Sticky header with quick-add, then stacked sections of large tappable task rows; max 760px column, iPad-friendly. */
+:root{
+  --bg:#eef2f0; --surface:#ffffff; --surface-2:#e3e9e6; --line:#d2dbd7;
+  --fg:#1d2a26; --muted:#5d6e68;
+  --accent:#f2b705; --accent-ink:#3a2c00; --accent-soft:#fdf0c4;
+  --done:#2f7a57; --late:#c4472f; --late-soft:#f8e1db;
+  --pa:#2b6cb0; --pa-soft:#dce9f7; --pb:#b4467a; --pb-soft:#f6dfea;
+  --shadow:0 1px 2px rgba(20,40,30,.08),0 4px 14px rgba(20,40,30,.06);
+  --f-display:"Bricolage Grotesque",ui-rounded,"Segoe UI",system-ui,sans-serif;
+  --f-body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121816; --surface:#1b2420; --surface-2:#232e2a; --line:#2f3c37;
+  --fg:#e7eeea; --muted:#9aaba4;
+  --accent:#f5c431; --accent-ink:#2a2000; --accent-soft:#3a3115;
+  --done:#5fbf8f; --late:#ef7a62; --late-soft:#3d221c;
+  --pa:#7fb2ea; --pa-soft:#1e3049; --pb:#e58ab4; --pb-soft:#44243a;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121816; --surface:#1b2420; --surface-2:#232e2a; --line:#2f3c37;
+  --fg:#e7eeea; --muted:#9aaba4;
+  --accent:#f5c431; --accent-ink:#2a2000; --accent-soft:#3a3115;
+  --done:#5fbf8f; --late:#ef7a62; --late-soft:#3d221c;
+  --pa:#7fb2ea; --pa-soft:#1e3049; --pb:#e58ab4; --pb-soft:#44243a;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;display:grid;gap:10px}
+.row1{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:800;font-size:2rem;letter-spacing:-.02em;margin:0;line-height:1}
+.date{color:var(--muted);font-size:.9rem;margin-top:2px}
+.who{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
+.who span{font-size:.75rem;color:var(--muted);padding-left:8px;text-transform:uppercase;letter-spacing:.06em}
+.who button{border:0;background:transparent;border-radius:999px;padding:6px 14px;font-weight:700}
+.who button[aria-pressed="true"].a{background:var(--pa);color:#fff}
+.who button[aria-pressed="true"].b{background:var(--pb);color:#fff}
+
+form.quick{display:flex;gap:8px}
+form.quick input{flex:1;min-width:0;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;font-size:1.05rem}
+form.quick input:focus{border-color:var(--accent);outline:none}
+.btn{border:0;border-radius:14px;padding:12px 16px;font-weight:700;background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.danger{background:var(--late);color:#fff}
+
+nav.tabs{display:flex;gap:4px;background:var(--surface-2);border-radius:14px;padding:4px}
+nav.tabs button{flex:1;border:0;background:transparent;border-radius:10px;padding:9px 6px;font-weight:700;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+
+.banner{border-radius:14px;padding:12px 14px;font-size:.92rem;background:var(--surface-2);color:var(--muted)}
+.banner.warn{background:var(--accent-soft);color:var(--fg)}
+
+section.block{margin-top:22px}
+section.block h2{font-family:var(--f-display);font-weight:700;font-size:1.15rem;margin:0 0 4px;display:flex;align-items:baseline;gap:8px;text-wrap:balance}
+section.block h2 .count{font-family:var(--f-body);font-size:.85rem;color:var(--muted);font-weight:600}
+section.block .hint{color:var(--muted);font-size:.88rem;margin:0 0 10px}
+.list{display:grid;gap:8px}
+
+.task{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:16px;padding:10px 12px 10px 10px;box-shadow:var(--shadow);border-left:5px solid transparent;min-height:64px}
+.task.late{border-left-color:var(--late)}
+.task.free{border-left-color:var(--accent)}
+.task .check{flex:none;width:44px;height:44px;border-radius:50%;border:3px solid var(--line);background:var(--surface);display:grid;place-items:center;transition:transform .15s,background .15s,border-color .15s}
+.task .check:hover{border-color:var(--done)}
+.task .check svg{width:22px;height:22px;opacity:0;stroke:#fff}
+.task.ticking .check{background:var(--done);border-color:var(--done);transform:scale(1.12)}
+.task.ticking .check svg{opacity:1}
+.task .body{flex:1;min-width:0;cursor:pointer;background:none;border:0;text-align:left;padding:2px 0}
+.task .title{font-weight:700;font-size:1.05rem;overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{font-size:.75rem;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chip.a{background:var(--pa-soft);color:var(--pa)}
+.chip.b{background:var(--pb-soft);color:var(--pb)}
+.chip.free{background:var(--accent-soft);color:var(--fg)}
+.chip.late{background:var(--late-soft);color:var(--late)}
+.chip.quickie{background:var(--done);color:#fff}
+.task .side{display:flex;flex-direction:column;gap:6px;flex:none}
+.small{border:1px solid var(--line);background:transparent;border-radius:10px;padding:6px 10px;font-size:.8rem;font-weight:700;white-space:nowrap}
+.small.take{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+.compact .task{min-height:52px;box-shadow:none;border:1px solid var(--line);border-left-width:5px}
+.empty{background:var(--surface);border:2px dashed var(--line);border-radius:16px;padding:16px;color:var(--muted);font-size:.95rem}
+
+.zone h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 8px}
+
+.balance{display:grid;gap:14px}
+.card{background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 10px;font-family:var(--f-display);font-size:1.05rem}
+.bar{display:flex;height:34px;border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.bar div{display:flex;align-items:center;padding:0 10px;color:#fff;font-weight:700;font-size:.85rem;white-space:nowrap;min-width:0;transition:flex-grow .4s}
+.bar .a{background:var(--pa)} .bar .b{background:var(--pb)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.stat{border-radius:12px;padding:10px 12px}
+.stat.a{background:var(--pa-soft)} .stat.b{background:var(--pb-soft)}
+.stat .n{font-family:var(--f-display);font-weight:800;font-size:1.6rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:.8rem;color:var(--muted)}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.log li{display:flex;gap:10px;align-items:baseline;font-size:.92rem}
+.log .dot{width:10px;height:10px;border-radius:50%;flex:none;transform:translateY(1px)}
+.log .dot.a{background:var(--pa)} .log .dot.b{background:var(--pb)}
+.log time{color:var(--muted);font-size:.8rem;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+.sheet-bg{position:fixed;inset:0;background:rgba(10,20,15,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:620px;max-height:92%;overflow:auto;border-radius:22px 22px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:14px}
+@media (min-width:700px){.sheet-bg{align-items:center}.sheet{border-radius:22px}}
+.sheet h2{margin:0;font-family:var(--f-display);font-size:1.3rem}
+.field{display:grid;gap:6px}
+.field label,.field .lbl{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.field input,.field select{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;width:100%}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:2px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-weight:700}
+.seg button[aria-pressed="true"]{border-color:var(--fg);background:var(--fg);color:var(--bg)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.actions .right{display:flex;gap:8px;margin-left:auto}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--fg);color:var(--bg);border-radius:14px;padding:10px 10px 10px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25);width:max-content;max-width:calc(100% - 32px)}
+.toast button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:6px 12px;font-weight:700}
+
+.setup{display:grid;gap:12px}
+.setup .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:480px){.setup .two{grid-template-columns:1fr}.task .side .small:not(.take){display:none}}
+footer{margin-top:36px;color:var(--muted);font-size:.85rem;display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between}
+footer button{background:none;border:0;color:var(--muted);text-decoration:underline;padding:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="row1">
+      <div>
+        <h1>Hemmet</h1>
+        <div class="date" id="today"></div>
+      </div>
+      <div class="who" id="who" role="group" aria-label="Vem använder appen just nu">
+        <span>Jag är</span>
+        <button class="a" id="who-a" aria-pressed="false">A</button>
+        <button class="b" id="who-b" aria-pressed="false">B</button>
+      </div>
+    </div>
+    <form class="quick" id="quick" autocomplete="off">
+      <input id="quick-input" placeholder="Såg du något? T.ex. ”pantburk på uppfarten”" aria-label="Lägg till en sak snabbt" maxlength="120">
+      <button class="btn primary" type="submit">Lägg till</button>
+    </form>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="idag" aria-selected="true">Idag</button>
+      <button role="tab" data-tab="alla" aria-selected="false">Alla sysslor</button>
+      <button role="tab" data-tab="balans" aria-selected="false">Balans</button>
+    </nav>
+  </header>
+
+  <div id="status"></div>
+  <main id="main">
+    <div class="empty" style="margin-top:22px">Hämtar era sysslor …</div>
+  </main>
+
+  <footer>
+    <span id="mode-note"></span>
+    <button id="open-settings" type="button">Namn &amp; inställningar</button>
+  </footer>
+</div>
+
+<div class="sheet-bg" id="sheet-bg" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"></div>
+</div>
+<div class="toast" id="toast" hidden><span id="toast-text"></span><button id="toast-undo" type="button">Ångra</button></div>
+
+<script>
+(() => {
+"use strict";
+const DAY = 86400000;
+const ZONES = ["Kök","Tvätt","Städ","Badrum","Sopor & pant","Ute & trädgård","Uppfart","Garage","Handla","Räkningar & papper","Övrigt"];
+const MINUTES = [2,5,15,30,60,120];
+const REPEATS = [[0,"En gång"],[1,"Varje dag"],[2,"Varannan dag"],[3,"Var 3:e dag"],[7,"Varje vecka"],[14,"Varannan vecka"],[30,"Varje månad"],[90,"Var 3:e månad"],[365,"Varje år"]];
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ls = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch {} }
+};
+const startOfDay = (t=Date.now()) => { const d=new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
+const addDays = (t,n) => { const d=new Date(t); d.setDate(d.getDate()+n); d.setHours(0,0,0,0); return d.getTime(); };
+function isoWeek(t){
+  const d=new Date(t); d.setHours(0,0,0,0);
+  d.setDate(d.getDate()+3-((d.getDay()+6)%7));
+  const w1=new Date(d.getFullYear(),0,4);
+  const n=1+Math.round(((d-w1)/DAY-3+((w1.getDay()+6)%7))/7);
+  return d.getFullYear()+"-W"+String(n).padStart(2,"0");
+}
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+/* ---------- state ---------- */
+let me = ls.get("hemmet.me") || "";          // "a" | "b" (per device)
+let tab = ls.get("hemmet.tab") || "idag";
+let settings = null;                           // {names:{a,b}}
+let tasks = [];                                // [{id,...}]
+let weeks = {};                                // {"2026-W46": {items:{id:{...}}}}
+let loaded = {settings:false,tasks:false,weeks:false};
+let mode = "loading";                          // "shared" | "local" | "loading"
+let readOnly = false;
+let showSettings = false;
+
+const name = p => (p==="a"||p==="b") ? ((settings?.names?.[p]) || (p==="a"?"Person A":"Person B")) : "Vem som helst";
+
+/* ---------- storage: shared db, or this device only ---------- */
+const store = {
+  db:null,
+  async saveTask(t){ const {id,...data}=t; if(this.db) await this.db.collection("tasks").doc(id).set(data); else { local.tasks[id]=data; localSave(); } },
+  async deleteTask(id){ if(this.db) await this.db.collection("tasks").doc(id).delete(); else { delete local.tasks[id]; localSave(); } },
+  async saveSettings(s){ if(this.db) await this.db.doc("hem/settings").set(s); else { local.settings=s; localSave(); } },
+  async logDone(week,id,entry){
+    if(this.db){
+      const ref=this.db.collection("weeks").doc(week);
+      try { await ref.update({items:{[id]:entry}}); }
+      catch(e){ if(e && e.code==="invalid_argument") await ref.set({items:{[id]:entry}}); else throw e; }
+    } else { (local.weeks[week] ||= {items:{}}).items[id]=entry; localSave(); }
+  },
+  async unlog(week,id){
+    if(this.db){ try { await this.db.collection("weeks").doc(week).update({items:{[id]:null}}); } catch {} }
+    else { if(local.weeks[week]) delete local.weeks[week].items[id]; localSave(); }
+  }
+};
+let local = {settings:null,tasks:{},weeks:{}};
+function localLoad(){
+  try { local = Object.assign({settings:null,tasks:{},weeks:{}}, JSON.parse(ls.get("hemmet.local")||"{}")); } catch {}
+  settings = local.settings;
+  tasks = Object.entries(local.tasks).map(([id,d])=>({id,...d}));
+  weeks = local.weeks;
+  loaded = {settings:true,tasks:true,weeks:true};
+}
+function localSave(){ ls.set("hemmet.local", JSON.stringify(local)); localLoad(); render(); }
+
+async function connect(){
+  let db = null;
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch { db = null; }
+  if(!db){ mode="local"; localLoad(); render(); return; }
+  store.db = db; mode="shared";
+  try {
+    const user = await window.claude.use("user");
+    if(user && user.can){ const c = await user.can("data.write"); if(c===false) readOnly=true; }
+  } catch {}
+  const slow = setTimeout(()=>{ setStatus("Kan inte nå er delade lista just nu. Den dyker upp så fort anslutningen är tillbaka.","warn"); }, 10000);
+  const ok = () => { clearTimeout(slow); setStatus(""); };
+  const fail = e => { clearTimeout(slow); setStatus("Listan kunde inte laddas ("+(e&&e.code||"fel")+"). Ladda om sidan om en stund.","warn"); };
+  db.doc("hem/settings").onSnapshot(s=>{ settings = s.exists ? s.data() : null; loaded.settings=true; if(!s.metadata.fromCache) ok(); render(); }, fail);
+  db.collection("tasks").onSnapshot(s=>{ tasks = s.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()})); loaded.tasks=true; if(!s.metadata.fromCache) ok(); render(); }, fail);
+  db.collection("weeks").onSnapshot(s=>{ const w={}; s.docs.forEach(d=>{ if(d.exists) w[d.id]=d.data(); }); weeks=w; loaded.weeks=true; render(); }, fail);
+}
+
+function setStatus(msg,kind){ $("#status").innerHTML = msg ? `<div class="banner ${kind||""}" style="margin-top:6px">${esc(msg)}</div>` : ""; }
+
+/* ---------- task logic ---------- */
+const isActive = t => !t.doneAt;
+const endToday = () => addDays(Date.now(),1)-1;
+const dueLabel = t => {
+  const d = Math.round((startOfDay(t.dueAt) - startOfDay())/DAY);
+  if(d<0) return d===-1 ? "sen igår" : `${-d} dagar sen`;
+  if(d===0) return "idag";
+  if(d===1) return "imorgon";
+  if(d<7) return new Date(t.dueAt).toLocaleDateString("sv-SE",{weekday:"long"});
+  return new Date(t.dueAt).toLocaleDateString("sv-SE",{day:"numeric",month:"short"});
+};
+const repeatLabel = n => (REPEATS.find(r=>r[0]===n)||[0,`var ${n}:e dag`])[1];
+const responsible = t => t.owner==="any" ? (t.claimedBy||null) : t.owner;
+
+async function complete(t, el){
+  if(readOnly) return;
+  const by = me || responsible(t) || "a";
+  const prev = {...t};
+  const now = Date.now();
+  const week = isoWeek(now);
+  const logId = uid();
+  const wasInitiative = t.owner==="any" || (t.owner!==by);
+  if(el){ el.classList.add("ticking"); await new Promise(r=>setTimeout(r,320)); }
+  const next = {...t, lastDoneAt:now, lastDoneBy:by, claimedBy:null};
+  if(t.every>0) next.dueAt = addDays(now, t.every); else next.doneAt = now;
+  try {
+    await store.saveTask(next);
+    await store.logDone(week, logId, {title:t.title, by, min:t.min||5, at:now, initiative:wasInitiative});
+    toast(`${pick(["Snyggt!","Klart!","Bra jobbat!","Bock!","Där satt den!"])} ”${t.title}”`, async ()=>{
+      await store.saveTask(prev); await store.unlog(week, logId);
+    });
+  } catch(e){ toast("Det gick inte att spara. Försök igen."); render(); }
+}
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+async function claim(t){ if(readOnly||!me) return askWho(); await store.saveTask({...t, claimedBy: t.claimedBy===me?null:me}); }
+async function snooze(t){ if(readOnly) return; await store.saveTask({...t, dueAt: addDays(Date.now(),1)}); toast(`”${t.title}” flyttad till imorgon`); }
+
+/* prune finished one-off tasks after 14 days */
+let pruned=false;
+function prune(){
+  if(pruned||readOnly||!loaded.tasks) return; pruned=true;
+  const cut = Date.now()-14*DAY;
+  tasks.filter(t=>t.doneAt && t.doneAt<cut).forEach(t=>store.deleteTask(t.id).catch(()=>{}));
+}
+
+/* ---------- rendering ---------- */
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function taskRow(t, opts={}){
+  const late = startOfDay(t.dueAt) < startOfDay();
+  const resp = responsible(t);
+  const free = t.owner==="any" && !t.claimedBy;
+  const chips = [];
+  if((t.min||5)<=5) chips.push(`<span class="chip quickie">${t.min||5} min</span>`);
+  else chips.push(`<span class="chip">${t.min} min</span>`);
+  if(free) chips.push(`<span class="chip free">Fri att ta</span>`);
+  else if(resp) chips.push(`<span class="chip ${resp}">${esc(name(resp))}${t.owner==="any"?" tog den":""}</span>`);
+  chips.push(`<span class="chip ${late?"late":""}">${esc(dueLabel(t))}</span>`);
+  if(opts.zone!==false) chips.push(`<span class="chip">${esc(t.zone||"Övrigt")}</span>`);
+  if(t.every>0) chips.push(`<span class="chip">${esc(repeatLabel(t.every).toLowerCase())}</span>`);
+  const side = [];
+  if(!readOnly){
+    if(t.owner==="any") side.push(`<button class="small ${free?"take":""}" data-act="claim" data-id="${t.id}">${t.claimedBy===me&&me?"Släpp":(free?"Jag tar den":"Ta över")}</button>`);
+    if(opts.snooze!==false) side.push(`<button class="small" data-act="snooze" data-id="${t.id}" title="Skjut upp till imorgon">Imorgon</button>`);
+  }
+  return `<div class="task ${late?"late":""} ${free?"free":""}" data-id="${t.id}">
+    <button class="check" data-act="done" data-id="${t.id}" aria-label="Markera ”${esc(t.title)}” som klar" ${readOnly?"disabled":""}>${CHECK}</button>
+    <button class="body" data-act="edit" data-id="${t.id}"><div class="title">${esc(t.title)}</div><div class="meta">${chips.join("")}</div></button>
+    ${side.length?`<div class="side">${side.join("")}</div>`:""}
+  </div>`;
+}
+const sortDue = (a,b) => (a.dueAt-b.dueAt) || ((a.min||5)-(b.min||5));
+
+function renderToday(){
+  const act = tasks.filter(isActive);
+  const due = act.filter(t=>t.dueAt<=endToday());
+  const other = me==="a"?"b":"a";
+  const mine = due.filter(t=>responsible(t)===me).sort(sortDue);
+  const free = due.filter(t=>t.owner==="any" && !t.claimedBy).sort((a,b)=>((a.min||5)-(b.min||5))||(a.dueAt-b.dueAt));
+  const theirs = due.filter(t=>responsible(t)===other).sort(sortDue);
+  const soon = act.filter(t=>t.dueAt>endToday() && t.dueAt<=addDays(Date.now(),7)).sort(sortDue);
+  const quick = free.filter(t=>(t.min||5)<=5);
+  const mineMin = mine.reduce((s,t)=>s+(t.min||5),0);
+  let h = "";
+  if(!me){
+    h += `<div class="banner warn" style="margin-top:18px">Tryck på ditt namn uppe till höger så visar tavlan <strong>dina</strong> sysslor.</div>`;
+  }
+  h += `<section class="block"><h2>${me?"Dina sysslor idag":"Ansvar idag"} <span class="count">${mine.length?`${mine.length} st · ca ${mineMin} min`:""}</span></h2>`;
+  h += mine.length ? `<div class="list">${mine.map(t=>taskRow(t)).join("")}</div>`
+       : `<div class="empty">${me?"Inget som är ditt idag. Ta gärna en fri syssla nedanför.":"Välj vem du är för att se dina sysslor."}</div>`;
+  h += `</section>`;
+  h += `<section class="block"><h2>Fria att ta <span class="count">${free.length?free.length+" st":""}</span></h2>
+        <p class="hint">${quick.length?`${quick.length} av dem tar under 5 minuter. Börja med en sån.`:"Den som tar en fri syssla får det i balansen som initiativ."}</p>`;
+  h += free.length ? `<div class="list">${free.map(t=>taskRow(t)).join("")}</div>` : `<div class="empty">Inga fria sysslor just nu. Ser du något som behöver göras? Skriv in det i rutan högst upp.</div>`;
+  h += `</section>`;
+  if(me && theirs.length){
+    h += `<section class="block compact"><h2>${esc(name(other))}s idag <span class="count">${theirs.length} st</span></h2>
+          <p class="hint">Tryck på bocken om du hjälper till. Det räknas på dig.</p>
+          <div class="list">${theirs.map(t=>taskRow(t,{snooze:false})).join("")}</div></section>`;
+  }
+  if(soon.length){
+    h += `<section class="block compact"><h2>Kommande 7 dagar <span class="count">${soon.length} st</span></h2>
+          <div class="list">${soon.map(t=>taskRow(t,{snooze:false})).join("")}</div></section>`;
+  }
+  return h;
+}
+
+function renderAll(){
+  const act = tasks.filter(isActive);
+  if(!act.length) return `<section class="block"><div class="empty">Här samlas alla sysslor, sorterade efter var i huset de hör hemma. Lägg till den första med rutan högst upp eller knappen nedan.</div></section>` + addBtn();
+  let h = `<section class="block"><h2>Alla sysslor <span class="count">${act.length} st</span></h2><p class="hint">Tryck på en syssla för att ändra vem som äger den, hur ofta den återkommer eller hur lång tid den tar.</p>`;
+  const zones = [...ZONES, ...new Set(act.map(t=>t.zone).filter(z=>!ZONES.includes(z)))];
+  zones.forEach(z=>{
+    const list = act.filter(t=>(t.zone||"Övrigt")===z).sort(sortDue);
+    if(list.length) h += `<div class="zone"><h3>${esc(z)}</h3><div class="list compact">${list.map(t=>taskRow(t,{zone:false,snooze:false})).join("")}</div></div>`;
+  });
+  return h + `</section>` + addBtn();
+}
+const addBtn = () => readOnly ? "" : `<div style="margin-top:16px"><button class="btn primary" data-act="new">Ny syssla med detaljer</button></div>`;
+
+function renderBalance(){
+  const now = Date.now();
+  const wk = isoWeek(now), last = isoWeek(now-7*DAY);
+  const sum = key => {
+    const items = Object.values(weeks[key]?.items||{}).filter(Boolean);
+    const r = {a:{min:0,n:0,init:0},b:{min:0,n:0,init:0},items};
+    items.forEach(i=>{ const p=r[i.by]; if(p){ p.min+=i.min||0; p.n++; if(i.initiative) p.init++; } });
+    return r;
+  };
+  const card = (title,key) => {
+    const s = sum(key); const tot = s.a.min+s.b.min;
+    const bar = tot ? `<div class="bar"><div class="a" style="flex-grow:${s.a.min}">${s.a.min?esc(name("a"))+" "+Math.round(100*s.a.min/tot)+"%":""}</div><div class="b" style="flex-grow:${s.b.min}">${s.b.min?esc(name("b"))+" "+Math.round(100*s.b.min/tot)+"%":""}</div></div>`
+      : `<div class="empty">Inget avbockat än ${key===wk?"den här veckan":"den veckan"}.</div>`;
+    const st = p => `<div class="stat ${p}"><div class="l">${esc(name(p))}</div><div class="n">${s[p].min} min</div><div class="l">${s[p].n} sysslor · ${s[p].init} på eget initiativ</div></div>`;
+    return `<div class="card"><h3>${title}</h3>${bar}<div class="stats">${st("a")}${st("b")}</div></div>`;
+  };
+  const items = sum(wk).items.sort((x,y)=>y.at-x.at);
+  const log = items.length ? `<ul class="log">${items.slice(0,40).map(i=>`<li><span class="dot ${i.by}"></span><span>${esc(i.title)}${i.initiative?' <span class="chip free">initiativ</span>':""}</span><time>${new Date(i.at).toLocaleDateString("sv-SE",{weekday:"short"})} ${new Date(i.at).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})}</time></li>`).join("")}</ul>` : `<div class="empty">När ni bockar av sysslor syns de här, med vem som gjorde vad.</div>`;
+  return `<section class="block balance">
+    <p class="hint" style="margin:0">Balansen räknar uppskattade minuter, inte antal sysslor. Då syns även det som annars är osynligt: gräsklippning, garaget och allt som bara blir gjort.</p>
+    ${card("Den här veckan",wk)}${card("Förra veckan",last)}
+    <div class="card"><h3>Gjort den här veckan</h3>${log}</div></section>`;
+}
+
+function renderSetup(){
+  return `<section class="block card setup">
+    <h2 style="margin:0;font-family:var(--f-display)">Välkomna! Vilka bor här?</h2>
+    <p class="hint" style="margin:0">Skriv era namn. Sen väljer var och en sitt namn uppe till höger på sin egen iPad eller mobil.</p>
+    <div class="two">
+      <div class="field"><label for="n-a">Namn 1 (du som satte upp tavlan)</label><input id="n-a" maxlength="20" placeholder="T.ex. Jonas"></div>
+      <div class="field"><label for="n-b">Namn 2</label><input id="n-b" maxlength="20" placeholder="T.ex. Sara"></div>
+    </div>
+    <div><button class="btn primary" data-act="save-names">Spara namnen</button></div>
+  </section>`;
+}
+
+function render(){
+  $("#today").textContent = new Date().toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"long"});
+  ["a","b"].forEach(p=>{ const b=$("#who-"+p); b.textContent=name(p); b.setAttribute("aria-pressed", String(me===p)); });
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===tab)));
+  $("#quick").hidden = readOnly;
+  $("#mode-note").textContent = mode==="local" ? "Sparas bara på den här enheten." : mode==="shared" ? (readOnly?"Du kan titta men inte ändra.":"Delad lista. Ändringar syns direkt för er båda.") : "";
+  if(!loaded.tasks || !loaded.settings) return;
+  prune();
+  let h = "";
+  if(mode==="local") h += `<div class="banner" style="margin-top:6px">Den här kopian sparar bara på den här enheten. Öppna den delade länken för att se samma lista på båda era enheter.</div>`;
+  if(!settings?.names?.a && !readOnly) h += renderSetup();
+  h += tab==="alla" ? renderAll() : tab==="balans" ? renderBalance() : renderToday();
+  const main = $("#main");
+  const y = window.scrollY;
+  main.innerHTML = h;
+  window.scrollTo(0,y);
+}
+
+/* ---------- edit sheet ---------- */
+let editing = null, confirmDel = false;
+function openSheet(t){
+  if(readOnly) return;
+  editing = t ? {...t} : {id:uid(), title:"", zone:"Övrigt", owner:"any", min:5, every:0, dueAt:startOfDay(), createdAt:Date.now(), createdBy:me||null, claimedBy:null};
+  confirmDel = false; drawSheet(); $("#sheet-bg").hidden = false;
+  setTimeout(()=>{ const i=$("#f-title"); if(i && !t) i.focus(); },50);
+}
+function closeSheet(){ $("#sheet-bg").hidden = true; editing = null; }
+function seg(field, options, cur){
+  return `<div class="seg" data-field="${field}">${options.map(([v,l])=>`<button type="button" data-val="${v}" aria-pressed="${String(v)===String(cur)}">${esc(l)}</button>`).join("")}</div>`;
+}
+function drawSheet(){
+  const t = editing; const isNew = !tasks.some(x=>x.id===t.id);
+  const dateStr = new Date(t.dueAt).toLocaleDateString("sv-SE");
+  $("#sheet").innerHTML = `
+    <h2 id="sheet-title">${isNew?"Ny syssla":"Ändra syssla"}</h2>
+    <div class="field"><label for="f-title">Vad ska göras?</label><input id="f-title" maxlength="120" value="${esc(t.title)}" placeholder="T.ex. Ta ut soporna"></div>
+    <div class="field"><span class="lbl">Vems är den?</span>${seg("owner",[["any","Fri, vem som helst"],["a",name("a")],["b",name("b")]],t.owner)}</div>
+    <div class="field"><span class="lbl">Ungefär hur lång tid?</span>${seg("min",MINUTES.map(m=>[m,m<60?m+" min":(m/60)+" tim"]),t.min)}</div>
+    <div class="field"><span class="lbl">Hur ofta?</span>${seg("every",REPEATS,t.every)}</div>
+    <div class="two" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+      <div class="field"><label for="f-zone">Var i huset?</label><select id="f-zone">${ZONES.map(z=>`<option ${z===t.zone?"selected":""}>${esc(z)}</option>`).join("")}</select></div>
+      <div class="field"><label for="f-due">${t.every>0?"Nästa gång":"Senast"}</label><input id="f-due" type="date" value="${dateStr}"></div>
+    </div>
+    <div class="actions">
+      ${isNew?"":(confirmDel?`<div class="confirm">Ta bort för gott? <button class="btn danger" type="button" data-sheet="del-yes">Ja, ta bort</button><button class="btn ghost" type="button" data-sheet="del-no">Nej</button></div>`:`<button class="btn ghost" type="button" data-sheet="del">Ta bort</button>`)}
+      <div class="right"><button class="btn ghost" type="button" data-sheet="cancel">Avbryt</button><button class="btn primary" type="button" data-sheet="save">Spara</button></div>
+    </div>`;
+}
+$("#sheet").addEventListener("click", async e=>{
+  const sb = e.target.closest(".seg button");
+  if(sb){ const f=sb.parentElement.dataset.field; let v=sb.dataset.val; if(f!=="owner") v=Number(v);
+    editing.title=$("#f-title").value; editing.zone=$("#f-zone").value; editing[f]=v; drawSheet(); return; }
+  const b = e.target.closest("[data-sheet]"); if(!b) return;
+  const a = b.dataset.sheet;
+  if(a==="cancel") return closeSheet();
+  if(a==="del"){ editing.title=$("#f-title").value; confirmDel=true; return drawSheet(); }
+  if(a==="del-no"){ confirmDel=false; return drawSheet(); }
+  if(a==="del-yes"){ const id=editing.id; closeSheet(); await store.deleteTask(id); toast("Borttagen"); return; }
+  if(a==="save"){
+    const title = $("#f-title").value.trim();
+    if(!title){ $("#f-title").focus(); $("#f-title").placeholder="Skriv vad som ska göras först"; return; }
+    const dv = $("#f-due").value; const due = dv ? new Date(dv+"T00:00:00").getTime() : startOfDay();
+    const t = {...editing, title, zone:$("#f-zone").value, dueAt: isNaN(due)?startOfDay():due};
+    if(t.owner!=="any") t.claimedBy=null;
+    if(t.every>0) t.doneAt=null;
+    closeSheet();
+    try { await store.saveTask(t); toast("Sparad"); } catch { toast("Det gick inte att spara. Försök igen."); }
+  }
+});
+$("#sheet-bg").addEventListener("click", e=>{ if(e.target.id==="sheet-bg") closeSheet(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("#sheet-bg").hidden) closeSheet(); });
+
+/* ---------- settings sheet ---------- */
+function openSettings(){
+  if(readOnly) return;
+  $("#sheet").innerHTML = `<h2 id="sheet-title">Namn &amp; inställningar</h2>
+    <div class="field"><label for="s-a">Namn 1</label><input id="s-a" maxlength="20" value="${esc(settings?.names?.a||"")}"></div>
+    <div class="field"><label for="s-b">Namn 2</label><input id="s-b" maxlength="20" value="${esc(settings?.names?.b||"")}"></div>
+    <p class="hint" style="margin:0;color:var(--muted);font-size:.9rem">Vem du är sparas på varje enhet för sig. Byt med knapparna uppe till höger.</p>
+    <div class="actions"><div class="right"><button class="btn ghost" type="button" id="s-cancel">Avbryt</button><button class="btn primary" type="button" id="s-save">Spara</button></div></div>`;
+  $("#sheet-bg").hidden=false;
+  $("#s-cancel").onclick = ()=>{ $("#sheet-bg").hidden=true; };
+  $("#s-save").onclick = async ()=>{
+    const a=$("#s-a").value.trim(), b=$("#s-b").value.trim();
+    $("#sheet-bg").hidden=true;
+    await store.saveSettings({...(settings||{}), names:{a:a||"Person A", b:b||"Person B"}});
+  };
+}
+$("#open-settings").addEventListener("click", openSettings);
+
+/* ---------- toast ---------- */
+let toastTimer=null, undoFn=null;
+function toast(text, undo){
+  $("#toast-text").textContent=text; undoFn=undo||null;
+  $("#toast-undo").hidden=!undo; $("#toast").hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{ $("#toast").hidden=true; undoFn=null; }, undo?6000:2500);
+}
+$("#toast-undo").addEventListener("click", async ()=>{ const f=undoFn; $("#toast").hidden=true; undoFn=null; if(f){ await f(); } });
+
+/* ---------- events ---------- */
+function askWho(){ toast("Välj vem du är uppe till höger först"); $("#who").scrollIntoView({block:"nearest"}); }
+["a","b"].forEach(p=>$("#who-"+p).addEventListener("click",()=>{ me=p; ls.set("hemmet.me",p); render(); }));
+document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click",()=>{ tab=b.dataset.tab; ls.set("hemmet.tab",tab); render(); window.scrollTo(0,0); }));
+$("#quick").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const v=$("#quick-input").value.trim(); if(!v||readOnly) return;
+  $("#quick-input").value="";
+  const t={id:uid(), title:v, zone:"Övrigt", owner:"any", min:5, every:0, dueAt:startOfDay(), createdAt:Date.now(), createdBy:me||null, claimedBy:null};
+  try { await store.saveTask(t); toast(`”${v}” ligger nu bland de fria`); } catch { toast("Det gick inte att spara. Försök igen."); }
+});
+$("#main").addEventListener("click", async e=>{
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const act=b.dataset.act; const t = tasks.find(x=>x.id===b.dataset.id);
+  if(act==="new") return openSheet(null);
+  if(act==="save-names"){
+    const a=$("#n-a").value.trim(), bb=$("#n-b").value.trim();
+    if(!a||!bb){ (a?$("#n-b"):$("#n-a")).focus(); return; }
+    await store.saveSettings({names:{a,b:bb}}); return;
+  }
+  if(!t) return;
+  if(act==="done") return complete(t, b.closest(".task"));
+  if(act==="claim") return claim(t);
+  if(act==="snooze") return snooze(t);
+  if(act==="edit") return openSheet(t);
+});
+window.addEventListener("storage", e=>{ if(mode==="local" && e.key==="hemmet.local"){ localLoad(); render(); } });
+/* refresh the "idag" boundary when the day changes */
+let lastDay = startOfDay();
+setInterval(()=>{ if(startOfDay()!==lastDay){ lastDay=startOfDay(); render(); } }, 60000);
+
+render();
+connect();
+})();
+</script>
+
+</body>
+</html>
