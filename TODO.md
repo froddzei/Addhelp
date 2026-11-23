@@ -9,13 +9,10 @@ Idéer som ska byggas in i Hemmet längre fram. Inget av detta är påbörjat.
 
 ## 2. Läsa sms och annat i telefonen
 - Hitta uppgifter i sms, till exempel från skolan, vården, hantverkare och leveranser.
-- Obs: på iPhone låter Apple inte appar läsa sms. Alternativ som går att undersöka:
-  - En Genväg (Shortcuts) som skickar vidare ett sms man själv valt.
-  - Att dela eller kopiera in texten i snabbrutan.
-  - På Android går det att läsa sms med tillstånd.
+- Vi har Android, så sms kan läsas direkt om man ger appen lov. Det kräver en liten Android-app eller en automatisering (till exempel Tasker eller en egen app) som skickar valda sms vidare till Chefen.
 
 ## 3. Transkribera samtal och göra uppgifter av dem
-- Spela in eller transkribera ett samtal, till exempel med iPhones inbyggda samtalsinspelning och transkribering i Anteckningar.
+- Spela in eller transkribera ett samtal, till exempel med telefonens inbyggda samtalsinspelning. Många Android-telefoner, som Samsung och Pixel, har det, och vissa transkriberar också.
 - Chefen gör en kort sammanfattning och en lista med uppgifter.
 - Chefen frågar vilka uppgifter som ska läggas in på tavlan (bocka för eller ur), på samma sätt som årsplanen gör i dag.
 - Obs: den andra parten i samtalet ska informeras om att samtalet spelas in.
